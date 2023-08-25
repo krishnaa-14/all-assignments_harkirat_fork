@@ -7,6 +7,43 @@ let ADMINS = [];
 let USERS = [];
 let COURSES = [];
 
+// Admin authentication Middle Ware. 
+
+function adminAuthenticationMiddleWare(req, res, next) {
+
+  var admin = req.headers;
+
+  var adminExists = false;
+  for(var i = 0; i < ADMINS.length; i++) {
+    if(ADMINS[i].username === admin.username && ADMINS[i].password === admin.password) {
+      adminExists = true;
+    }
+  }
+
+  if(adminExists) {
+    next();
+  }
+  else {
+    res.send("Admin Authentication Failed !!! ")
+  }
+
+}
+
+function userAuthenticationMiddleWare(req, res, next) {
+
+  var userCreds = req.headers;
+  var user = USERS.find(currUser => currUser.username === userCreds.username && currUser.password === userCreds.password);
+
+  if(user) {
+    req.user = user;
+    next();
+  }
+  else {
+    res.send("User Authentication Failed !!! ");
+  }
+
+}
+
 // Admin routes
 app.post('/admin/signup', (req, res) => {
   // logic to sign up admin
@@ -21,87 +58,38 @@ app.post('/admin/signup', (req, res) => {
 
 });
 
-app.post('/admin/login', (req, res) => {
+app.post('/admin/login', adminAuthenticationMiddleWare, (req, res) => {
   // logic to log in admin
 
-  var user = req.headers;
-
-  // This authentication we need to do it globally instead of doing for every route, 
-  // We need to use middlewares for that. 
-
-  var adminExists = false;
-  for(var i = 0; i < ADMINS.length; i++) {
-    if(ADMINS[i].username === user.username && ADMINS[i].password === user.password) {
-      adminExists = true;
-    }
-  }
-
-  if(adminExists) {
-    res.send("Logged In Successfully !")
-  }
-  else {
-    res.send("Admin Not found");
-  }
-
+  res.send("Admin Logged In !! ")
 
 });
 
-app.post('/admin/courses', (req, res) => {
+app.post('/admin/courses', adminAuthenticationMiddleWare, (req, res) => {
   // logic to create a course
 
-  var user = req.headers;
   var courseBody = req.body;
   var courseId = Date.now();
 
-  var adminExists = false;
-  for(var i = 0; i < ADMINS.length; i++) {
-    if(ADMINS[i].username === user.username && ADMINS[i].password === user.password) {
-      adminExists = true;
-    }
-  }
+  courseBody["courseId"] = courseId;
 
-  if(!adminExists) {
-    res.send("Admin Authentication Failed");
-  }
-
-  else {
-
-    courseBody["courseId"] = courseId;
-
-    COURSES.push(courseBody);
-    res.send({
-      "message" : "Course Created SuccessFully !",
-      "courseId" : courseId
-    });
-
-  }
+  COURSES.push(courseBody);
+  res.send({
+    "message" : "Course Created SuccessFully !",
+    "courseId" : courseId
+  });
 
 });
 
-app.put('/admin/courses/:courseId', (req, res) => {
+app.put('/admin/courses/:courseId', adminAuthenticationMiddleWare, (req, res) => {
   // logic to edit a course
 
-  var user = req.headers;
   var courseId = parseInt(req.params.courseId);
   var index = COURSES.findIndex(course => course.courseId === courseId);
  
   var updatedCourseBody = Object.assign(COURSES[index], req.body);
-  
 
-  console.log(courseId);
-
-  console.log(index);
-  console.log(COURSES);
-  console.log(courseId);
-
-  var adminExists = false;
-  for(var i = 0; i < ADMINS.length; i++) {
-    if(ADMINS[i].username === user.username && ADMINS[i].password === user.password) {
-      adminExists = true;
-    }
-  }
-
-  if(adminExists && index != -1) {
+  if(index != -1) {
     COURSES[index] = updatedCourseBody;
     console.log(updatedCourseBody);
     console.log(COURSES);
@@ -115,24 +103,10 @@ app.put('/admin/courses/:courseId', (req, res) => {
 
 });
 
-app.get('/admin/courses', (req, res) => {
+app.get('/admin/courses', adminAuthenticationMiddleWare, (req, res) => {
   // logic to get all courses
 
-  var user = req.headers;
-
-  var adminExists = false;
-  for(var i = 0; i < ADMINS.length; i++) {
-    if(ADMINS[i].username === user.username && ADMINS[i].password === user.password) {
-      adminExists = true;
-    }
-  }
-
-  if(adminExists) {
-    res.send(COURSES);
-  }
-  else {
-    res.send("Not able to fetch Courses.");
-  }
+  res.send(COURSES);
 
 });
 
@@ -142,7 +116,7 @@ app.post('/users/signup', (req, res) => {
 
   var userDetails = req.headers;
   userDetails["purchasedCourses"] = [];
-  console.log(userDetails);
+  // console.log(userDetails);
 
   // headers
 
@@ -164,59 +138,26 @@ app.post('/users/signup', (req, res) => {
 
 });
 
-app.post('/users/login', (req, res) => {
+app.post('/users/login', userAuthenticationMiddleWare, (req, res) => {
   // logic to log in user
 
-  var userDetails = req.headers;
-  var userExists = false;
-
-  for(var i = 0; i < USERS.length; i++) {
-    if(USERS[i].username === userDetails.username && USERS[i].password === userDetails.password) {
-      userExists = true;
-      break;
-    }
-  }
-
-  if(userExists) {
-    res.send("Logged In Successfully !");
-  }
-  else {
-    res.send("User Not signed up")
-  }
-
+  res.send("User Logged In Successfully !! ")
 });
 
-app.get('/users/courses', (req, res) => {
+app.get('/users/courses', userAuthenticationMiddleWare, (req, res) => {
   // logic to list all courses
 
-  var userDetails = req.headers;
-  var userExists = false;
-
-  for(var i = 0; i < USERS.length; i++) {
-    if(USERS[i].username === userDetails.username && USERS[i].password === userDetails.password) {
-      userExists = true;
-      break;
-    }
-  }
-
-  if(userExists) {
-    res.send(COURSES);
-  }
+  res.send(COURSES);
 
 });
 
-app.post('/users/courses/:courseId', (req, res) => {
+app.post('/users/courses/:courseId', userAuthenticationMiddleWare, (req, res) => {
   // logic to purchase a course
   var courseId = parseInt(req.params.courseId);
   var index = COURSES.findIndex(course => course.courseId === courseId)
-  // purchasedCourses.push(COURSES[index]);
-
-  var user = req.headers;
-
-  var userIndex = USERS.findIndex(currUser => currUser.username === user.username && currUser.password === user.password);
 
   if(index != -1) {
-    USERS[userIndex].purchasedCourses.push(COURSES[index]);
+    req.user.purchasedCourses.push(COURSES[index]);
     res.send("Course Purchased Successfully !")
   }
   else {
@@ -224,18 +165,10 @@ app.post('/users/courses/:courseId', (req, res) => {
   }
 });
 
-app.get('/users/purchasedCourses', (req, res) => {
+app.get('/users/purchasedCourses', userAuthenticationMiddleWare, (req, res) => {
   // logic to view purchased courses
-  var user = req.headers;
-  var userIndex = USERS.findIndex(currUser => currUser.username === user.username && currUser.password === user.password);
 
-  if(userIndex != -1) {
-    res.send(USERS[userIndex].purchasedCourses);
-  }
-  else {
-    res.send("There are no purchased courses");
-  }
-
+  res.send(req.user.purchasedCourses);
 
 });
 
